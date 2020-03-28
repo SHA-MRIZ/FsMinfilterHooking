@@ -32,6 +32,9 @@
     <ClInclude Include="FsMinifilterHooking.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PrivateFunctions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FsMinifilterHooking.cpp">
