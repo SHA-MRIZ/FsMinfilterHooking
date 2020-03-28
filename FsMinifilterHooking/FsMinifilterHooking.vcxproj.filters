@@ -32,6 +32,12 @@
     <ClInclude Include="FsMinifilterHooking.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="RAIIUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PrivateStructs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FsMinifilterHooking.cpp">
