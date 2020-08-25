@@ -23,6 +23,22 @@ bool isCallbackNode(
             (potentialCallbackNode->Instance == pFltInstance));
 }
 
+bool readMemorySafe(void* targetAddress, void* allocatedBuffer, unsigned short lengthToRead)
+{
+    auto physicalAddress = MmGetPhysicalAddress(targetAddress);
+    if (physicalAddress.QuadPart)
+    {
+        auto newVirtualAddress = MmMapIoSpace(physicalAddress, lengthToRead, MmNonCached);
+        if (newVirtualAddress != nullptr)
+        {
+            RtlCopyMemory(allocatedBuffer, newVirtualAddress, lengthToRead);
+            MmUnmapIoSpace(newVirtualAddress, lengthToRead);
+            return true;
+        }
+    }
+    return false;
+}
+
 unsigned short getOffsetOfCallbackNodes(
     FltFilterGuard& filter,
     unsigned short limit,
@@ -39,20 +55,27 @@ unsigned short getOffsetOfCallbackNodes(
         return offset;
     }
 
-    FltVolumeGuard volume(*instancesArray[0]);
+    // Allocate memory of the instance object memory
+    auto memorySize = limit / sizeof(unsigned short);
+    ArrayGuard<unsigned short> instanceObjectMemory;
+    instanceObjectMemory.allocate(NonPagedPool, memorySize);
 
+    // Safe read instance object memory
+    if (readMemorySafe(instancesArray[0]->get(), instanceObjectMemory.get(), limit) == false)
+    {
+        return offset;
+    }
+
+    // Over the memory to find the offset of teh callback
     for (unsigned short i = 0; i < limit / sizeof(unsigned short); i++)
     {
         potentialPointer = reinterpret_cast<void*>(*(reinterpret_cast<PULONG_PTR>(
-            reinterpret_cast<unsigned short*>(instancesArray[0]->get()) + i)));
+            reinterpret_cast<unsigned short*>(instanceObjectMemory.get()) + i)));
 
-        if (MmIsAddressValid(potentialPointer) &&
-            (potentialPointer != filter.get()) &&
-            (potentialPointer != volume.get()) &&
-            (isCallbackNode(
-                reinterpret_cast<PCALLBACK_NODE>(potentialPointer),
-                instancesArray[0]->get(),
-                preCallbackFunc)))
+        if (MmIsAddressValid(potentialPointer) && (isCallbackNode(
+            reinterpret_cast<PCALLBACK_NODE>(potentialPointer),
+            instancesArray[0]->get(),
+            preCallbackFunc)))
         {
             offset = i * sizeof(unsigned short) - callbackIndex * sizeof(PCALLBACK_NODE);
             break;
